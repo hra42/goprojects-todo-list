@@ -1,11 +1,6 @@
 # Use a multi-architecture base image
 FROM --platform=$BUILDPLATFORM golang:1.22 AS build
 
-# Specify Container Labels
-LABEL org.opencontainers.image.description "cli application for managing tasks in the terminal."
-LABEL org.opencontainers.image.licenses "Unlicense"
-LABEL org.opencontainers.image.source "https://github.com/hra42/goprojects-todo-list"
-
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
@@ -27,6 +22,11 @@ RUN GOOS=$(echo ${TARGETPLATFORM} | cut -d / -f1) \
 
 # Start a new stage from scratch
 FROM scratch
+
+# Specify Container Labels
+LABEL org.opencontainers.image.description="cli application for managing tasks in the terminal."
+LABEL org.opencontainers.image.licenses="Unlicense"
+LABEL org.opencontainers.image.source="https://github.com/hra42/goprojects-todo-list"
 
 WORKDIR /app
 
