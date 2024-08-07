@@ -2,9 +2,9 @@
 FROM --platform=$BUILDPLATFORM golang:1.22 AS build
 
 # Specify Container Labels
-LABEL org.opencontainers.image.description="cli application for managing tasks in the terminal."
-LABEL org.opencontainers.image.licenses="Unlicense"
-LABEL org.opencontainers.image.source="https://github.com/hra42/goprojects-todo-list"
+LABEL org.opencontainers.image.description "cli application for managing tasks in the terminal."
+LABEL org.opencontainers.image.licenses "Unlicense"
+LABEL org.opencontainers.image.source "https://github.com/hra42/goprojects-todo-list"
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
