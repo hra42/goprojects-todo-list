@@ -24,9 +24,9 @@ RUN GOOS=$(echo ${TARGETPLATFORM} | cut -d / -f1) \
 FROM scratch
 
 # Specify Container Labels
-LABEL org.opencontainers.image.description="cli application for managing tasks in the terminal."
-LABEL org.opencontainers.image.licenses="Unlicense"
-LABEL org.opencontainers.image.source="https://github.com/hra42/goprojects-todo-list"
+LABEL org.opencontainers.image.description "cli application for managing tasks in the terminal."
+LABEL org.opencontainers.image.licenses "Unlicense"
+LABEL org.opencontainers.image.source "https://github.com/hra42/goprojects-todo-list"
 
 WORKDIR /app
 
