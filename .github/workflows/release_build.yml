@@ -1,4 +1,5 @@
 name: release build
+
 on:
   push:
     branches:
@@ -21,7 +22,7 @@ jobs:
           - goarch: arm64
             goos: windows
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set APP_VERSION env
         run: echo APP_VERSION=$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev ) >> ${GITHUB_ENV}
@@ -30,7 +31,7 @@ jobs:
       - name: Environment Printer
         uses: managedkaos/print-env@v1.0
 
-      - uses: wangyoucao577/go-release-action@v1.41
+      - uses: wangyoucao577/go-release-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
@@ -41,6 +42,6 @@ jobs:
           compress_assets: OFF
           md5sum: FALSE
           executable_compression: upx --ultra-brute --no-lzma
-          asset_name: go-api-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: goprojects-todo-list-${{ matrix.goos }}-${{ matrix.goarch }}
           build_flags: -v
           ldflags: -extldflags '-static' -w -s -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}"
