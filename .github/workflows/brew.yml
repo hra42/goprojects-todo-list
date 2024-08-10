@@ -1,0 +1,50 @@
+name: Release and Update Homebrew
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Formula
+        env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          REPO="hra42/homebrew-hra42"
+          FORMULA_PATH="Formula/goprojects-todo-list.rb"
+          DOWNLOAD_URL="https://github.com/hra42/goprojects-todo-list/archive/refs/tags/${VERSION}.tar.gz"
+          SHA256=$(curl -sL $DOWNLOAD_URL | shasum -a 256 | cut -d ' ' -f 1)
+
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          git clone https://${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/${REPO}.git
+          cd homebrew-tap
+
+          sed -i'' -e 's|url ".*"|url "'$DOWNLOAD_URL'"|' $FORMULA_PATH
+          sed -i'' -e 's|sha256 ".*"|sha256 "'$SHA256'"|' $FORMULA_PATH
+
+          git add $FORMULA_PATH
+          git commit -m "Update goprojects-todo-list to ${VERSION}"
+          git push
