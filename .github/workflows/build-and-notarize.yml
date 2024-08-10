@@ -4,8 +4,8 @@ on:
   push:
     tags:
       - "v*"
-  repository_dispatch:
-    types: [notarization_complete]
+  schedule:
+    - cron: "0 * * * *" # Run every hour
 
 jobs:
   build-and-submit:
@@ -33,19 +33,14 @@ jobs:
           AC_USERNAME: ${{ secrets.APPLE_ID }}
           AC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
         run: |
-          CALLBACK_URL="https://api.github.com/repos/${{ github.repository }}/dispatches"
           SUBMISSION_ID=$(xcrun notarytool submit tasks.zip \
             --apple-id "$AC_USERNAME" \
             --password "$AC_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --webhook "$CALLBACK_URL" \
-            --webhook-payload "{\"event_type\": \"notarization_complete\", \"client_payload\": {\"submission_id\": \"{id}\"}}" \
-            --webhook-header "Authorization: token $REPO_ACCESS_TOKEN" \
             --output-format json | jq -r '.id')
           echo "Submission ID: $SUBMISSION_ID"
-          echo "submission_id=$SUBMISSION_ID" >> $GITHUB_ENV
+          echo $SUBMISSION_ID > submission_id.txt
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -54,9 +49,10 @@ jobs:
           path: |
             tasks
             tasks.zip
+            submission_id.txt
 
-  process-notarization:
-    if: github.event_name == 'repository_dispatch' && github.event.action == 'notarization_complete'
+  check-notarization:
+    if: github.event_name == 'schedule'
     runs-on: macos-latest
     steps:
       - name: Download artifacts
@@ -69,8 +65,12 @@ jobs:
           AC_USERNAME: ${{ secrets.APPLE_ID }}
           AC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          SUBMISSION_ID: ${{ github.event.client_payload.submission_id }}
         run: |
+          if [ ! -f submission_id.txt ]; then
+            echo "No pending notarization found"
+            exit 0
+          fi
+          SUBMISSION_ID=$(cat submission_id.txt)
           STATUS=$(xcrun notarytool info $SUBMISSION_ID \
             --apple-id "$AC_USERNAME" \
             --password "$AC_PASSWORD" \
@@ -78,15 +78,22 @@ jobs:
             --output-format json | jq -r '.status')
           if [ "$STATUS" = "Accepted" ]; then
             echo "Notarization successful"
+            rm submission_id.txt
+          elif [ "$STATUS" = "In Progress" ]; then
+            echo "Notarization still in progress"
+            exit 0
           else
             echo "Notarization failed with status: $STATUS"
+            rm submission_id.txt
             exit 1
           fi
 
       - name: Staple notarization ticket
+        if: success() && !contains(steps.check-notarization.outputs.status, 'In Progress')
         run: xcrun stapler staple tasks
 
       - name: Create release
+        if: success() && !contains(steps.check-notarization.outputs.status, 'In Progress')
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -94,3 +101,13 @@ jobs:
             tasks.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload updated artifacts
+        if: success() && contains(steps.check-notarization.outputs.status, 'In Progress')
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            tasks
+            tasks.zip
+            submission_id.txt
