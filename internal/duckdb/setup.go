@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -23,11 +23,11 @@ type Task struct {
 	IsComplete  bool
 }
 
-// InitDB initializes the DuckDB database
+// InitDB initializes the SQLite database
 func InitDB(dbPath string) error {
 	var err error
 	once.Do(func() {
-		db, err = sql.Open("duckdb", dbPath)
+		db, err = sql.Open("sqlite3", dbPath)
 		if err != nil {
 			log.Printf("Failed to open database: %v", err)
 			return
@@ -48,31 +48,17 @@ func InitDB(dbPath string) error {
 	return err
 }
 
-// createTable creates the tasks table and ID_SEQ sequence if they don't exist
+// createTable creates the tasks table if it doesn't exist
 func createTable() error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Try to create the sequence. If it already exists, this will fail, but that's okay.
-	_, _ = tx.Exec("CREATE SEQUENCE IF NOT EXISTS ID_SEQ START 1")
-
-	// Create the table if it doesn't exist
-	_, err = tx.Exec(`
+	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS tasks (
-			id INTEGER PRIMARY KEY DEFAULT NEXTVAL('ID_SEQ'),
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			description TEXT NOT NULL,
 			created_at TIMESTAMP NOT NULL,
-			is_complete BOOLEAN NOT NULL DEFAULT FALSE
+			is_complete BOOLEAN NOT NULL DEFAULT 0
 		)
 	`)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return err
 }
 
 // AddTask adds a new task to the database
@@ -92,7 +78,7 @@ func ListTasks(showAll bool) ([]Task, error) {
 	}
 	query := "SELECT id, description, created_at, is_complete FROM tasks"
 	if !showAll {
-		query += " WHERE is_complete = FALSE"
+		query += " WHERE is_complete = 0"
 	}
 	query += " ORDER BY id ASC"
 
@@ -120,7 +106,7 @@ func CompleteTask(id int) error {
 	if db == nil {
 		return fmt.Errorf("database not initialized")
 	}
-	_, err := db.Exec("UPDATE tasks SET is_complete = TRUE WHERE id = ?", id)
+	_, err := db.Exec("UPDATE tasks SET is_complete = 1 WHERE id = ?", id)
 	return err
 }
 
