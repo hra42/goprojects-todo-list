@@ -14,11 +14,9 @@ RUN go mod download
 COPY . .
 
 # Build the Go app for the target platform
-ARG TARGETPLATFORM
-RUN GOOS=$(echo ${TARGETPLATFORM} | cut -d / -f1) \
-    GOARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
-    GOARM=$(echo ${TARGETPLATFORM} | cut -d / -f3 | cut -c2-) \
-    go build -o main .
+ARG TARGETOS
+ARG TARGETARCH
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o main .
 
 # Start a new stage from scratch
 FROM scratch
