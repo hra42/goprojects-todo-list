@@ -1,5 +1,5 @@
 FROM scratch
 
-COPY goprojects-todo-list /app
+COPY tasks /app
 
 ENTRYPOINT ["/app"]
