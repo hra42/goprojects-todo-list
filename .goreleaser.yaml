@@ -5,21 +5,29 @@ before:
     - go mod tidy
 
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - main: .
+    id: win/lin
+    binary: tasks
     goos:
       - linux
-      - darwin
       - windows
     goarch:
       - amd64
       - arm
       - arm64
     ignore:
-      - goos: darwin
-        goarch: amd64
       - goos: windows
         goarch: arm
+  - main: .
+    id: macOS
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags: -s -w
+    env:
+      - CGO_ENABLED=0
 
 dockers:
   - image_templates:
@@ -54,8 +62,7 @@ docker_manifests:
 
 universal_binaries:
   - name_template: "{{.ProjectName}}_{{.Version}}"
-    id: macOS-Universal
-
+    id: macOS
     # Whether to remove the previous single-arch binaries from the artifact list.
     # If left as false, your end release might have as much as three
     # archives for macOS: 'amd64', 'arm64' and 'all'.
@@ -87,7 +94,7 @@ archives:
 notarize:
   macos:
     - ids:
-        - macOS-Universal
+        - macOS
       # Before notarizing, we need to sign the binary.
       # This blocks defines the configuration for doing so.
       sign:
@@ -134,22 +141,6 @@ brews:
     #
     # Default: v1.
     goamd64: v1
-
-    # Headers to include in the `url` stanza.
-    # This can be a more modern alternative to `download_strategy` in some
-    # cases.
-    url_headers:
-      - "Accept: application/octet-stream"
-      - 'Authorization: bearer #{ENV["HOMEBREW_GITHUB_API_TOKEN"]}'
-
-    # Allows you to set a custom download strategy. Note that you'll need
-    # to implement the strategy and add it to your tap repository.
-    # Example: https://docs.brew.sh/Formula-Cookbook#specifying-the-download-strategy-explicitly
-    download_strategy: CurlDownloadStrategy
-
-    # Allows you to add a custom require_relative at the top of the formula
-    # template.
-    custom_require: custom_download_strategy
 
     # Git author used to commit to the repository.
     commit_author:
