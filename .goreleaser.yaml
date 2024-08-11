@@ -129,6 +129,8 @@ brews:
     # Default: the project name.
     # Templates: allowed.
     name: tasks
+    description: "A simple todo list manager for the command line"
+    homepage: "https://postrausch.tech"
 
     # GOARM to specify which 32-bit arm version to use if there are multiple
     # versions from the build section. Brew formulas support only one 32-bit
