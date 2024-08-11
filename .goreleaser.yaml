@@ -2,8 +2,7 @@ version: 2
 
 before:
   hooks:
-    - cmd: go mod tidy
-      output: false
+    - go mod tidy
 
 builds:
   - env:
