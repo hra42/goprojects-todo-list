@@ -4,8 +4,6 @@ before:
   hooks:
     - cmd: go mod tidy
       output: false
-    - cmd: "docker system prune --all -f"
-      output: false
 
 builds:
   - env:
@@ -32,6 +30,7 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
+    skip_push: true
   - image_templates:
       - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
       - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
@@ -40,19 +39,23 @@ dockers:
       - "--pull"
       - "--platform=linux/arm64"
     goarch: arm64
+    skip_push: true
 
 docker_manifests:
   - name_template: "docker.io/hra42/goprojects-todo-list:{{ .Tag }}"
     image_templates:
       - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
       - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+    skip_push: false
   - name_template: "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}"
     image_templates:
       - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
       - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+    skip_push: false
 
 universal_binaries:
   - name_template: "{{.ProjectName}}_{{.Version}}"
+    id: macOS-Universal
 
     # Whether to remove the previous single-arch binaries from the artifact list.
     # If left as false, your end release might have as much as three
@@ -81,47 +84,106 @@ archives:
       - goos: windows
         format: zip
 
-dockerhub:
-  - # Your hub.docker.com username. Must have 'editor' permissions
-    #
-    # Default: "{{ .Env.DOCKER_USERNAME }}".
-    # Templates: allowed.
-    username: "{{ .Env.DOCKER_USERNAME }}"
+# .goreleaser.yaml
+notarize:
+  macos:
+    - ids:
+        - macOS-Universal
+      # Before notarizing, we need to sign the binary.
+      # This blocks defines the configuration for doing so.
+      sign:
+        # The .p12 certificate file path or its base64'd contents.
+        certificate: "{{.Env.MACOS_SIGN_P12}}"
 
-    # Environment variable name to get the push token from.
-    # You might want to change it if you have multiple dockerhub configurations.
+        # The password to be used to open the certificate.
+        password: "{{.Env.MACOS_SIGN_PASSWORD}}"
+
+      # Then, we notarize the binaries.
+      notarize:
+        # The issuer ID.
+        # Its the UUID you see when creating the App Store Connect key.
+        issuer_id: "{{.Env.MACOS_NOTARY_ISSUER_ID}}"
+
+        # Key ID.
+        # You can see it in the list of App Store Connect Keys.
+        # It will also be in the ApiKey filename.
+        key_id: "{{.Env.MACOS_NOTARY_KEY_ID}}"
+
+        # The .p8 key file path or its base64'd contents.
+        key: "{{.Env.MACOS_NOTARY_KEY}}"
+
+        # Whether to wait for the notarization to finish.
+        # Not recommended, as it could take a really long time.
+        wait: true
+
+brews:
+  - # Name of the recipe
+    #
+    # Default: the project name.
+    # Templates: allowed.
+    name: tasks
+
+    # GOARM to specify which 32-bit arm version to use if there are multiple
+    # versions from the build section. Brew formulas support only one 32-bit
+    # version.
+    #
+    # Default: 6.
+    goarm: 6
+
+    # GOAMD64 to specify which amd64 version to use if there are multiple
+    # versions from the build section.
+    #
+    # Default: v1.
+    goamd64: v1
+
+    # Headers to include in the `url` stanza.
+    # This can be a more modern alternative to `download_strategy` in some
+    # cases.
+    url_headers:
+      - "Accept: application/octet-stream"
+      - 'Authorization: bearer #{ENV["HOMEBREW_GITHUB_API_TOKEN"]}'
+
+    # Allows you to set a custom download strategy. Note that you'll need
+    # to implement the strategy and add it to your tap repository.
+    # Example: https://docs.brew.sh/Formula-Cookbook#specifying-the-download-strategy-explicitly
+    download_strategy: CurlDownloadStrategy
+
+    # Allows you to add a custom require_relative at the top of the formula
+    # template.
+    custom_require: custom_download_strategy
+
+    # Git author used to commit to the repository.
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+    # The project name and current git tag are used in the format string.
     #
     # Templates: allowed.
-    # Default: "DOCKER_PASSWORD".
-    secret_name: "DOCKER_PASSWORD"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
 
-    # Images to apply the description and/or full description to.
-    #
-    # Templates: allowed.
-    images:
-      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}"
+    # Directory inside the repository to put the formula.
+    directory: Formula
 
-    # The short description of the image.
+    # SPDX identifier of your app's license.
     #
-    # Templates: allowed.
-    description: "A simple todo list project"
+    # Default: inferred from global metadata.
+    license: "Unlicense"
 
-    # The full description of the image.
-    #
-    # It can be a string directly, or you can use `from_url` or `from_file` to
-    # source it from somewhere else.
-    #
-    # Templates: allowed.
-    full_description:
-      # Loads from a local file.
-      # Overrides `from_url`.
-      from_file:
-        # Templates: allowed.
-        path: ./README.md
+    # Repository to push the generated files to.
+    repository:
+      # Repository owner.
+      #
+      # Templates: allowed.
+      owner: hra42
 
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+      # Repository name.
+      #
+      # Templates: allowed.
+      name: homebrew-hra42
+
+      # Optionally a token can be provided, if it differs from the token
+      # provided to GoReleaser
+      #
+      # Templates: allowed.
+      token: "{{ .Env.GITHUB_PERSONAL_AUTH_TOKEN }}"
