@@ -62,7 +62,7 @@ docker_manifests:
     skip_push: false
 
 universal_binaries:
-  - name_template: "{{.ProjectName}}_{{.Version}}"
+  - name_template: "tasks"
     id: macOS
     # Whether to remove the previous single-arch binaries from the artifact list.
     # If left as false, your end release might have as much as three
@@ -80,7 +80,7 @@ archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
-      {{ .ProjectName }}_
+      tasks_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
@@ -96,6 +96,7 @@ notarize:
   macos:
     - ids:
         - macOS
+      enabled: true
       # Before notarizing, we need to sign the binary.
       # This blocks defines the configuration for doing so.
       sign:
@@ -129,21 +130,8 @@ brews:
     # Default: the project name.
     # Templates: allowed.
     name: tasks
-    description: "A simple todo list manager for the command line"
+    description: "simple todo list manager for the command-line"
     homepage: "https://postrausch.tech"
-
-    # GOARM to specify which 32-bit arm version to use if there are multiple
-    # versions from the build section. Brew formulas support only one 32-bit
-    # version.
-    #
-    # Default: 6.
-    goarm: 6
-
-    # GOAMD64 to specify which amd64 version to use if there are multiple
-    # versions from the build section.
-    #
-    # Default: v1.
-    goamd64: v1
 
     # Git author used to commit to the repository.
     commit_author:
