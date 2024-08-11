@@ -1,0 +1,127 @@
+version: 2
+
+before:
+  hooks:
+    - cmd: go mod tidy
+      output: false
+    - cmd: "docker system prune --all -f"
+      output: false
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+      - goos: windows
+        goarch: arm
+
+dockers:
+  - image_templates:
+      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+      - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
+      - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+    goarch: arm64
+
+docker_manifests:
+  - name_template: "docker.io/hra42/goprojects-todo-list:{{ .Tag }}"
+    image_templates:
+      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
+      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+  - name_template: "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-arm64"
+      - "ghcr.io/hra42/goprojects-todo-list:{{ .Tag }}-amd64"
+
+universal_binaries:
+  - name_template: "{{.ProjectName}}_{{.Version}}"
+
+    # Whether to remove the previous single-arch binaries from the artifact list.
+    # If left as false, your end release might have as much as three
+    # archives for macOS: 'amd64', 'arm64' and 'all'.
+    replace: true
+
+    # Set the modified timestamp on the output binary, typically
+    # you would do this to ensure a build was reproducible.
+    # Pass an empty string to skip modifying the output.
+    #
+    # Templates: allowed.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+dockerhub:
+  - # Your hub.docker.com username. Must have 'editor' permissions
+    #
+    # Default: "{{ .Env.DOCKER_USERNAME }}".
+    # Templates: allowed.
+    username: "{{ .Env.DOCKER_USERNAME }}"
+
+    # Environment variable name to get the push token from.
+    # You might want to change it if you have multiple dockerhub configurations.
+    #
+    # Templates: allowed.
+    # Default: "DOCKER_PASSWORD".
+    secret_name: "DOCKER_PASSWORD"
+
+    # Images to apply the description and/or full description to.
+    #
+    # Templates: allowed.
+    images:
+      - "docker.io/hra42/goprojects-todo-list:{{ .Tag }}"
+
+    # The short description of the image.
+    #
+    # Templates: allowed.
+    description: "A simple todo list project"
+
+    # The full description of the image.
+    #
+    # It can be a string directly, or you can use `from_url` or `from_file` to
+    # source it from somewhere else.
+    #
+    # Templates: allowed.
+    full_description:
+      # Loads from a local file.
+      # Overrides `from_url`.
+      from_file:
+        # Templates: allowed.
+        path: ./README.md
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/hra42/goprojects-todo-list/internal/duckdb"
+	duckdb "github.com/hra42/goprojects-todo-list/internal/sqlite"
 	"github.com/mergestat/timediff"
 )
 
