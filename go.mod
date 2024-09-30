@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/mergestat/timediff v0.0.3
-	github.com/ncruces/go-sqlite3 v0.18.3
+	github.com/ncruces/go-sqlite3 v0.18.4
 )
 
 require (
